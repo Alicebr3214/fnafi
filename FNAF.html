@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FNAF: Sobrecarga V5.8</title>
+    <style>
+        body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; touch-action: manipulation; user-select: none; }
+        #game-container { position: relative; width: 100vw; height: 100vh; display: none; }
+        
+        /* UI de Bateria */
+        #ui-top { position: absolute; top: 15px; left: 15px; z-index: 50; width: 180px; }
+        #battery-bar-bg { width: 100%; height: 12px; border: 2px solid #fff; background: #000; margin-top: 5px; box-shadow: 0 0 5px #fff; }
+        #battery-bar { width: 100%; height: 100%; background: #0f0; transition: width 0.1s; }
+        #clock { position: absolute; top: 15px; right: 20px; font-size: 1.8rem; font-weight: bold; z-index: 50; }
+
+        /* Escritório e Porta */
+        #office { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #111, #000); }
+        #door-frame { position: absolute; width: 85%; height: 70%; border: 6px solid #333; background: #000; overflow: hidden; display: flex; justify-content: center; align-items: flex-end; }
+        #door-visual { position: absolute; top: -100%; left: 0; width: 100%; height: 100%; background: linear-gradient(#333, #111); border-bottom: 8px solid #000; z-index: 10; transition: top 0.2s ease-out; }
+        .door-closed #door-visual { top: 0; }
+
+        /* Bloco Neon Branco para não sumir no fundo preto */
+        .monster-neon { 
+            width: 110px; height: 200px; position: relative; display: none; z-index: 5; 
+            background: #000;
+            border: 4px solid #fff; 
+            box-shadow: 0 0 20px #fff, inset 0 0 10px #fff; 
+            border-radius: 20px 20px 0 0;
+        }
+        .pupil { position: absolute; top: 40px; width: 22px; height: 22px; background: radial-gradient(circle, #f00, #000); border-radius: 50%; box-shadow: 0 0 10px #f00; }
+        .pupil.l { left: 20px; } .pupil.r { right: 20px; }
+
+        /* Novo Monstro da CAM 3 (O Prisioneiro) */
+        .monster-core {
+            width: 90px; height: 160px; position: relative; z-index: 5;
+            background: #000; border: 4px solid #0ff; box-shadow: 0 0 20px #0ff;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .core-eye { width: 40px; height: 40px; background: #0ff; border-radius: 50%; box-shadow: 0 0 30px #0ff; animation: pulse 1s infinite alternate; }
+
+        /* Monitor */
+        #monitor { display: none; position: absolute; top:0; left:0; width: 100%; height: 100%; background: #000; z-index: 40; }
+        #cam-view { width: 90%; height: 45%; margin: 10% auto 0; background: #000; border: 2px solid #fff; position: relative; overflow: hidden; display: flex; align-items: flex-end; justify-content: center; }
+        
+        /* UI de Recarga da CAM 3 */
+        #cam-3-ui { display: none; position: absolute; bottom: 5%; width: 100%; text-align: center; z-index: 45; }
+        #charge-bar-bg { width: 80%; height: 15px; border: 2px solid #fff; margin: 0 auto 10px auto; background: #000; position: relative; }
+        #charge-bar { width: 50%; height: 100%; background: #0ff; }
+        #charge-warning { position: absolute; top:-20px; width: 100%; color: red; font-size: 0.8rem; font-weight: bold; display: none; }
+
+        /* Botões */
+        .btn { position: absolute; padding: 20px; background: rgba(255,255,255,0.1); border: 2px solid #fff; color: #fff; z-index: 30; border-radius: 10px; text-align: center; font-weight: bold; }
+        #btn-door { left: 15px; bottom: 80px; width: 90px; }
+        #btn-cams { bottom: 20px; left: 50%; transform: translateX(-50%); width: 70%; background: rgba(0,0,255,0.2); }
+        .cam-btn { padding: 15px; background: #222; border: 1px solid #fff; color: #fff; text-align: center; margin: 5px; }
+        .active-cam { background: #fff; color: #000; }
+        #btn-recharge { position: relative; padding: 15px; background: rgba(0,255,255,0.3); border: 2px solid #0ff; color: #0ff; width: 60%; margin: 0 auto; }
+
+        #start-screen, #jumpscare, #jumpscare-core, #win-screen { position: fixed; top:0; left:0; width:100vw; height:100vh; display: flex; align-items:center; justify-content:center; flex-direction: column; z-index: 100; background: #000; }
+        #jumpscare, #jumpscare-core { display: none; } #win-screen { display: none; }
+        
+        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.7; } 100% { transform: scale(1.1); opacity: 1; } }
+        @keyframes shake { 0% { transform: translate(5px, 5px); } 50% { transform: translate(-5px, -5px); } 100% { transform: translate(0,0); } }
+    </style>
+</head>
+<body>
+
+<div id="start-screen" onclick="iniciar()">
+    <h1 style="color:red; text-shadow: 0 0 10px #f00;">FNAF V5.8</h1>
+    <p>TOQUE PARA INICIAR</p>
+</div>
+
+<div id="game-container">
+    <div id="ui-top">
+        <div id="battery-text" style="color:#0f0; font-weight:bold;">BATERIA: 100%</div>
+        <div id="battery-bar-bg"><div id="battery-bar"></div></div>
+    </div>
+    <div id="clock">12 AM</div>
+
+    <div id="office">
+        <div id="door-frame">
+            <div id="door-visual"></div>
+            <div id="enemy-door" class="monster-neon">
+                <div class="pupil l"></div><div class="pupil r"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="btn-door" class="btn">PORTA</div>
+    <div id="btn-cams" class="btn">MONITOR</div>
+
+    <div id="monitor">
+        <div id="cam-view">
+            <div id="enemy-cam" class="monster-neon" style="transform: scale(0.65);">
+                <div class="pupil l"></div><div class="pupil r"></div>
+            </div>
+            <div id="enemy-core" class="monster-core" style="display:none;">
+                <div class="core-eye"></div>
+            </div>
+            
+            <h3 id="cam-tag" style="position:absolute; top:10px; left:10px; color:#fff; text-shadow: 0 0 5px #fff;">CAM 3</h3>
+        </div>
+        
+        <div id="cam-3-ui">
+            <div id="charge-bar-bg">
+                <div id="charge-warning">SOBRECARGA / FALHA!</div>
+                <div id="charge-bar"></div>
+            </div>
+            <div id="btn-recharge">SEGURE PARA RECARREGAR</div>
+        </div>
+
+        <div style="display:flex; justify-content:center; margin-top:20px;">
+            <div class="cam-btn active-cam" onclick="mudarCam(3)">CAM 3</div>
+            <div class="cam-btn" onclick="mudarCam(2)">CAM 2</div>
+            <div class="cam-btn" onclick="mudarCam(1)">CAM 1</div>
+        </div>
+        <div onclick="fecharCams()" class="btn" style="position:relative; width: 50%; margin: 15px auto;">FECHAR MONITOR</div>
+    </div>
+
+    <div id="jumpscare">
+        <div class="monster-neon" style="display:block; transform: scale(3.5); animation: shake 0.1s infinite;">
+            <div class="pupil l"></div><div class="pupil r"></div>
+        </div>
+    </div>
+    
+    <div id="jumpscare-core">
+        <div class="monster-core" style="transform: scale(4); border-color: red; box-shadow: 0 0 50px red;">
+            <div class="core-eye" style="background: red; box-shadow: 0 0 50px red; animation: shake 0.05s infinite;"></div>
+        </div>
+        <h1 style="color:red; margin-top:50px;">FALHA NO NÚCLEO</h1>
+    </div>
+
+    <div id="win-screen"><h1 style="color:gold;">6 AM</h1><p>Sobreviveu!</p></div>
+</div>
+
+<script>
+    let audioCtx, jogoOn = false, energia = 100, hora = 12, portaOk = false, camOk = false, camAtual = 3;
+    let posInimigo = 2, tempoNaPorta = 0, cooldownMover = 4000;
+    
+    // Variáveis da CAM 3 (O Prisioneiro)
+    let cargaCore = 50; 
+    let recarregando = false;
+
+    function initAudio() { if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+    
+    function tocarSom(f, t, v, tipo = 'sine') {
+        if (!audioCtx) return;
+        let osc = audioCtx.createOscillator();
+        let g = audioCtx.createGain();
+        osc.type = tipo; osc.frequency.setValueAtTime(f, audioCtx.currentTime);
+        g.gain.setValueAtTime(v, audioCtx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + t);
+        osc.connect(g); g.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + t);
+    }
+
+    function iniciar() {
+        initAudio(); document.getElementById('start-screen').style.display = 'none';
+        document.getElementById('game-container').style.display = 'block';
+        jogoOn = true;
+    }
+
+    // Botão da Porta
+    document.getElementById('btn-door').addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        if (energia > 0) {
+            portaOk = !portaOk; tocarSom(80, 0.2, 0.2, 'sawtooth');
+            document.getElementById('door-frame').classList.toggle('door-closed', portaOk);
+        }
+    });
+
+    // Monitor
+    document.getElementById('btn-cams').addEventListener('touchstart', (e) => { 
+        e.preventDefault(); camOk = true; document.getElementById('monitor').style.display = 'block'; atualizarCams(); 
+    });
+    function fecharCams() { 
+        camOk = false; recarregando = false; document.getElementById('monitor').style.display = 'none'; 
+    }
+
+    function mudarCam(n) { 
+        camAtual = n; recarregando = false;
+        document.getElementById('cam-tag').innerText = "CAM " + n;
+        document.querySelectorAll('.cam-btn').forEach(b => b.classList.toggle('active-cam', b.innerText.includes(n)));
+        atualizarCams();
+    }
+
+    function atualizarCams() { 
+        // Inimigo Normal só aparece na 1 ou 2
+        document.getElementById('enemy-cam').style.display = (posInimigo === camAtual && camAtual !== 3) ? 'block' : 'none'; 
+        
+        // Inimigo do Núcleo só aparece na 3
+        document.getElementById('enemy-core').style.display = (camAtual === 3) ? 'flex' : 'none';
+        document.getElementById('cam-3-ui').style.display = (camAtual === 3) ? 'block' : 'none';
+    }
+
+    // Sistema de Recarga (Botão pressionado vs solto)
+    const btnRecharge = document.getElementById('btn-recharge');
+    btnRecharge.addEventListener('touchstart', (e) => { e.preventDefault(); recarregando = true; tocarSom(400, 0.1, 0.05); });
+    btnRecharge.addEventListener('touchend', (e) => { e.preventDefault(); recarregando = false; });
+    // Eventos de rato para testar no PC
+    btnRecharge.addEventListener('mousedown', (e) => { recarregando = true; });
+    btnRecharge.addEventListener('mouseup', (e) => { recarregando = false; });
+    btnRecharge.addEventListener('mouseleave', (e) => { recarregando = false; });
+
+    // Relógio
+    setInterval(() => {
+        if (!jogoOn) return;
+        hora = (hora === 12) ? 1 : hora + 1;
+        document.getElementById('clock').innerText = hora + " AM";
+        if (hora === 6) { jogoOn = false; document.getElementById('win-screen').style.display = 'flex'; }
+    }, 30000); 
+
+    // Loop Principal (A cada 100ms)
+    setInterval(() => {
+        if (!jogoOn) return;
+
+        // 1. GESTÃO DE BATERIA (Apenas Dreno Ativo)
+        let dreno = 0; // ZERO dreno passivo
+        if (portaOk) dreno += 0.06; 
+        if (camOk) dreno += 0.04;   
+        
+        energia -= dreno;
+        if (energia <= 0) { energia = 0; portaOk = false; document.getElementById('door-frame').classList.remove('door-closed'); }
+        document.getElementById('battery-bar').style.width = energia + "%";
+        document.getElementById('battery-text').innerText = "BATERIA: " + Math.floor(energia) + "%";
+        document.getElementById('battery-bar').style.background = energia < 20 ? "red" : "#0f0";
+
+        // 2. LÓGICA DO NÚCLEO DA CAM 3
+        if (recarregando && camOk && camAtual === 3) {
+            cargaCore += 1.2; // Enche rápido ao segurar
+        } else {
+            cargaCore -= 0.35; // Esvazia sozinho com o tempo
+        }
+
+        let barraVisual = Math.min(Math.max(cargaCore, 0), 100);
+        document.getElementById('charge-bar').style.width = barraVisual + "%";
+
+        // Avisos visuais de perigo
+        let alerta = document.getElementById('charge-warning');
+        if (cargaCore > 85 || cargaCore < 15) {
+            document.getElementById('charge-bar').style.background = "red";
+            alerta.style.display = "block";
+            if(Math.random() > 0.5) tocarSom(150, 0.1, 0.05, 'sawtooth'); // Beep de aviso
+        } else {
+            document.getElementById('charge-bar').style.background = "#0ff";
+            alerta.style.display = "none";
+        }
+
+        // Condição de Derrota da CAM 3 (Vazio ou Sobrecarga)
+        if (cargaCore <= 0 || cargaCore >= 100) {
+            jogoOn = false; 
+            tocarSom(50, 2, 0.5, 'square');
+            document.getElementById('jumpscare-core').style.display = 'flex';
+            setTimeout(() => location.reload(), 4000);
+            return; // Para o resto do loop
+        }
+
+        // 3. IA DO MONSTRO NORMAL (CAM 2 -> CAM 1 -> PORTA)
+        if (cooldownMover > 0) {
+            cooldownMover -= 100;
+        } else if (Math.random() > 0.99 && posInimigo < 4) {
+            posInimigo++; 
+            cooldownMover = 4500; 
+            tocarSom(100, 0.4, 0.1, 'square'); 
+            if (camOk) atualizarCams();
+        }
+
+        // Lógica da Porta
+        if (posInimigo === 4) {
+            document.getElementById('enemy-door').style.display = 'block';
+            if (!portaOk) {
+                tempoNaPorta += 100;
+                if (tempoNaPorta > 6000) { 
+                    jogoOn = false; tocarSom(100, 1.5, 0.5, 'sawtooth');
+                    document.getElementById('jumpscare').style.display = 'flex';
+                    setTimeout(() => location.reload(), 4000);
+                }
+            } else {
+                if (Math.random() > 0.98) { posInimigo = 2; tempoNaPorta = 0; cooldownMover = 4000; }
+            }
+        } else {
+            document.getElementById('enemy-door').style.display = 'none';
+            tempoNaPorta = 0;
+        }
+
+    }, 100);
+</script>
+
+</body>
+</html>
